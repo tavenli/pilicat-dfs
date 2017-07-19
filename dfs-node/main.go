@@ -1,14 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
-	"os"
+	"dfs-node/server"
 	"pilicat-core/config"
 	"pilicat-core/logs"
-	"time"
+)
 
-	"github.com/chrislusf/seaweedfs/weed/util"
+var (
+	nodePubServer *server.NodePubServer
+	nodeApiServer *server.NodeApiServer
 )
 
 func main() {
@@ -22,52 +22,14 @@ func main() {
 	//为了让日志输出不影响性能，开启异步日志
 	logs.Async()
 
-	appName := config.AppConf.String("app.name")
+	nodeName := config.AppConf.String("node.name")
 
 	logs.Debug("★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★")
-	logs.Debug("               ", appName, " 启动")
+	logs.Debug("               ", nodeName, " 启动")
 	logs.Debug("")
 	logs.Debug("★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★")
 
-	RunNode()
-}
-
-func RunNode() {
-
-	nodeApiAddr := config.AppConf.DefaultString("node.api.addr", ":8800")
-
-	endRunning := make(chan bool, 1)
-
-	logs.Info("Start dfs-node api server", nodeApiAddr)
-	listener, err := util.NewListener(nodeApiAddr, time.Duration(30)*time.Second)
-	if err != nil {
-		logs.Error("dfs-node api server listener error:", err)
-	}
-
-	apiNodeMux := initApiNodeMux()
-
-	go func() {
-
-		if err := http.Serve(listener, apiNodeMux); err != nil {
-			logs.Critical("Dfs-Node: ", err, fmt.Sprintf("%d", os.Getpid()))
-			time.Sleep(100 * time.Microsecond)
-			endRunning <- true
-		}
-	}()
-
-	<-endRunning
-
-	logs.Info("Close dfs-node api server", nodeApiAddr)
-	return
-}
-
-func initApiNodeMux() *http.ServeMux {
-	apiNodeMux := http.NewServeMux()
-	apiNodeMux.HandleFunc("/api/post", PostHandler)
-
-	return apiNodeMux
-}
-
-func PostHandler(w http.ResponseWriter, r *http.Request) {
+	nodePubServer.Run()
+	nodeApiServer.Run()
 
 }
