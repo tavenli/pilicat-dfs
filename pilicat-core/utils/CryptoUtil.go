@@ -2,6 +2,8 @@ package utils
 
 import (
 	"crypto/md5"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -20,4 +22,14 @@ func GetSaltMD5(input, salt string) string {
 	io.WriteString(hash, input+salt)
 	result := fmt.Sprintf("%x", hash.Sum(nil))
 	return result
+}
+
+//生成Guid字串
+func GetGuid() string {
+	b := make([]byte, 48)
+
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+		return ""
+	}
+	return GetMd5(base64.URLEncoding.EncodeToString(b))
 }
