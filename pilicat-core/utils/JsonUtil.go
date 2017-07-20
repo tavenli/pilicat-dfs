@@ -5,9 +5,9 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"pilicat-core/logs"
 	"reflect"
 
-	"github.com/astaxie/beego/logs"
 	"github.com/ugorji/go/codec"
 )
 

@@ -5,25 +5,26 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"pilicat-core/logs"
 	"strings"
 
 	"bytes"
-
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/logs"
 )
 
-func GetIP(c *beego.Controller) string {
-	//utils.GetIP(&c.Controller)
-	//也可以直接用 c.Ctx.Input.IP() 取真实IP
-	ip := c.Ctx.Request.Header.Get("X-Real-IP")
+func GetIP(req *http.Request) string {
+
+	ip := req.Header.Get("X-Real-IP")
 	if ip != "" {
 		return ip
 	}
 
-	ip = c.Ctx.Request.Header.Get("Remote_addr")
+	ip = req.Header.Get("Remote_addr")
 	if ip == "" {
-		ip = c.Ctx.Request.RemoteAddr
+		ip = req.RemoteAddr
+	}
+
+	if Contains(ip, ":") {
+		ip = Split(ip, ":")[0]
 	}
 	return ip
 }
