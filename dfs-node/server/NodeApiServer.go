@@ -177,6 +177,7 @@ func (_self *NodeApiServer) Run() {
 	app := iris.New()
 	//不限制上传文件的大小
 	app.Post("/api/file", _self.FileHandler)
+	app.Put("/api/file", _self.FileHandler)
 	//限制上传文件的大小，32<<20 表示 32M
 	//app.Post("/api/file", context.LimitRequestBodySize(32<<20), _self.FileHandler)
 	app.Any("/", _self.DefaultHandler)
