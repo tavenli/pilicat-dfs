@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"dfs-common"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,6 +12,7 @@ import (
 	"path"
 	"pilicat-core/config"
 	"pilicat-core/logs"
+	"pilicat-core/models"
 	"pilicat-core/utils"
 	"time"
 
@@ -20,6 +22,12 @@ import (
 
 type NodeApiServer struct {
 }
+
+var (
+	dfsPubUrl string
+)
+
+type GenFilePath func(fName string) (dirName, fileName string)
 
 func (_self *NodeApiServer) ParseFormUpload(ctx context.Context, key string) (fileName string, file multipart.File, e error) {
 	file, info, err := ctx.FormFile(key)
@@ -81,29 +89,70 @@ func (_self *NodeApiServer) ParseMultipartUpload(r *http.Request) (fileName stri
 	return
 }
 
+func (_self *NodeApiServer) GenFilePathByDaily(fName string) (dirName, fileName string) {
+	fileExt := utils.FileExt(fName)
+	rndFileName := fmt.Sprint(_self.RandomFileName(), fileExt)
+
+	return _self.DailyDirName(), rndFileName
+}
+
 func (_self *NodeApiServer) FileHandler(ctx context.Context) {
+	logs.Debug(utils.GetIP(ctx.Request()), " ", ctx.Method(), " ", ctx.Path())
+
+	result := &models.ResultData{}
+
 	fileName, data, err := _self.ParseMultipartUpload(ctx.Request())
 	if err == nil {
-		fileExt := utils.FileExt(fileName)
-		fmt.Println("FileName: ", fileName, " FileExt: ", fileExt)
-		filePath := fmt.Sprint("./file/", _self.RandomFileName(), fileExt)
+		logs.Debug("Upload FileName: ", fileName)
+		dirName, genFileName := _self.GenFilePathByDaily(fileName)
+
+		fileCtxPath := fmt.Sprint("/file/", dirName)
+		pwd, _ := os.Getwd()
+		fileDir := fmt.Sprint(pwd, fileCtxPath)
+		err := utils.MakeDir(fileDir, os.ModePerm)
+		if err != nil {
+			logs.Error("MakeDir error:", err)
+			OutputJson(ctx, models.ResultData{Code: 1, Msg: err.Error()})
+			return
+		}
+		filePath := fmt.Sprint(fileDir, "/", genFileName)
 		f, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 		defer f.Close()
 		if err != nil {
 			logs.Error("OpenFile error:", err)
+			OutputJson(ctx, models.ResultData{Code: 1, Msg: err.Error()})
+			return
 		}
 		//
 		io.Copy(f, bytes.NewReader(data))
+		urlCtxPath := fmt.Sprint(fileCtxPath, "/", genFileName)
+		logs.Debug("Saved File. ", urlCtxPath)
+		dfsFile := new(dfsCommon.DfsFileInfo)
+		dfsFile.FileUrlPath = urlCtxPath
+		dfsFile.OrgFileName = fileName
+		dfsFile.PubUrl = fmt.Sprint(dfsPubUrl, urlCtxPath)
+
+		result.Code = 0
+		result.Msg = "success"
+		result.Data = dfsFile
 
 	} else {
 		logs.Error("Upload file error:", err)
+		result.Code = 1
+		result.Msg = err.Error()
 	}
-	fmt.Println(time.Now())
+
+	//OutputJson(ctx, models.ResultData{Code: 0, Msg: ""})
+	OutputJson(ctx, result)
 	return
 }
 
 func (_self *NodeApiServer) MonthDirName() string {
 	return utils.FormatTimeByFm(time.Now(), "200601")
+}
+
+func (_self *NodeApiServer) DailyDirName() string {
+	return utils.FormatTimeByFm(time.Now(), "2006/01/02")
 }
 
 func (_self *NodeApiServer) RandomFileName() string {
@@ -112,19 +161,24 @@ func (_self *NodeApiServer) RandomFileName() string {
 
 func (_self *NodeApiServer) DefaultHandler(ctx context.Context) {
 
-	fmt.Println("DefaultHandler ", ctx.Method())
+	logs.Debug("DefaultHandler ", ctx.Method())
 
 	OutputText(ctx, fmt.Sprint("Pilicat Dfs-Node Api ", Version))
 }
 
 func (_self *NodeApiServer) Run() {
 	endRunning := make(chan bool, 1)
+
 	nodeApiAddr := config.AppConf.DefaultString("node.api.addr", ":8800")
+	dfsPubUrl = config.AppConf.DefaultString("dfs.public.url", "http://your.domain")
 
 	logs.Info("Start dfs-node api server", nodeApiAddr)
 
 	app := iris.New()
-	app.Post("/api/file", context.LimitRequestBodySize(32<<20), _self.FileHandler)
+	//不限制上传文件的大小
+	app.Post("/api/file", _self.FileHandler)
+	//限制上传文件的大小，32<<20 表示 32M
+	//app.Post("/api/file", context.LimitRequestBodySize(32<<20), _self.FileHandler)
 	app.Any("/", _self.DefaultHandler)
 
 	go func() {

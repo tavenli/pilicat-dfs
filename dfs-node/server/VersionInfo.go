@@ -1,4 +1,4 @@
 package server
 
 //版本号
-const Version = "1.0.0"
+const Version = "v1.0.0"

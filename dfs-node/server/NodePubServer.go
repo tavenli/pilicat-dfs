@@ -16,7 +16,7 @@ type NodePubServer struct {
 }
 
 func (_self *NodePubServer) DefaultHandler(ctx context.Context) {
-	fmt.Println("DefaultHandler ", ctx.Method())
+	logs.Debug(utils.GetIP(ctx.Request()), " ", ctx.Method(), " ", ctx.Path())
 
 	OutputText(ctx, fmt.Sprint("Pilicat Dfs-Node Pub ", Version))
 }
