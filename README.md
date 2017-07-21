@@ -42,7 +42,7 @@ cd dfs-node_linux64_v1.0.0
 ```
 - 上传文件测试
 ```
-curl -X PUT -F file=@/app/test.jpg http://127.0.0.1:8800/api/file
+curl -X POST -F file=@/app/test.jpg http://127.0.0.1:8800/api/file
 ```
 - 服务返回信息
 ```
@@ -71,7 +71,7 @@ dfs.public.url = "http://dsf.hicode.top:8700"    //用于对外访问的域名
 后续的功能将根据进度，陆续发布，敬请期待...
 
 
-本软件由 湖南快乐码农科技有限公司 提供技术支持
+
 
 
 
