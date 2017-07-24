@@ -23,6 +23,7 @@ func GetIP(req *http.Request) string {
 		ip = req.RemoteAddr
 	}
 
+	//host, port, err = net.SplitHostPort(req.RemoteAddr)
 	if Contains(ip, ":") {
 		ip = Split(ip, ":")[0]
 	}

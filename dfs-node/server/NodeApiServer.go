@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"dfs-common"
+	"dfs-node/handler"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -24,7 +25,9 @@ type NodeApiServer struct {
 }
 
 var (
-	dfsPubUrl string
+	dfsPubUrl   string
+	postHandler handler.IHandler
+	delHandler  handler.IHandler
 )
 
 type GenFilePath func(fName string) (dirName, fileName string)
@@ -96,7 +99,7 @@ func (_self *NodeApiServer) GenFilePathByDaily(fName string) (dirName, fileName 
 	return _self.DailyDirName(), rndFileName
 }
 
-func (_self *NodeApiServer) FileHandler(ctx context.Context) {
+func (_self *NodeApiServer) SaveFileHandler(ctx context.Context) {
 	logs.Debug(utils.GetIP(ctx.Request()), " ", ctx.Method(), " ", ctx.Path())
 
 	result := &models.ResultData{}
@@ -112,7 +115,7 @@ func (_self *NodeApiServer) FileHandler(ctx context.Context) {
 		err := utils.MakeDir(fileDir, os.ModePerm)
 		if err != nil {
 			logs.Error("MakeDir error:", err)
-			OutputJson(ctx, models.ResultData{Code: 1, Msg: err.Error()})
+			dfsCommon.OutputJson(ctx, models.ResultData{Code: 1, Msg: err.Error()})
 			return
 		}
 		filePath := fmt.Sprint(fileDir, "/", genFileName)
@@ -120,7 +123,7 @@ func (_self *NodeApiServer) FileHandler(ctx context.Context) {
 		defer f.Close()
 		if err != nil {
 			logs.Error("OpenFile error:", err)
-			OutputJson(ctx, models.ResultData{Code: 1, Msg: err.Error()})
+			dfsCommon.OutputJson(ctx, models.ResultData{Code: 1, Msg: err.Error()})
 			return
 		}
 		//
@@ -142,8 +145,8 @@ func (_self *NodeApiServer) FileHandler(ctx context.Context) {
 		result.Msg = err.Error()
 	}
 
-	//OutputJson(ctx, models.ResultData{Code: 0, Msg: ""})
-	OutputJson(ctx, result)
+	//dfsCommon.OutputJson(ctx, models.ResultData{Code: 0, Msg: ""})
+	dfsCommon.OutputJson(ctx, result)
 	return
 }
 
@@ -161,9 +164,9 @@ func (_self *NodeApiServer) RandomFileName() string {
 
 func (_self *NodeApiServer) DefaultHandler(ctx context.Context) {
 
-	logs.Debug("DefaultHandler ", ctx.Method())
+	logs.Debug(utils.GetIP(ctx.Request()), " ", ctx.Method(), " ", ctx.Path())
 
-	OutputText(ctx, fmt.Sprint("Pilicat Dfs-Node Api ", Version))
+	dfsCommon.OutputText(ctx, fmt.Sprint("Pilicat Dfs-Node Api ", Version))
 }
 
 func (_self *NodeApiServer) Run() {
@@ -171,13 +174,29 @@ func (_self *NodeApiServer) Run() {
 
 	nodeApiAddr := config.AppConf.DefaultString("node.api.addr", ":8800")
 	dfsPubUrl = config.AppConf.DefaultString("dfs.public.url", "http://your.domain")
+	nodeAuthType := config.AppConf.DefaultString("node.auth.type", "")
 
 	logs.Info("Start dfs-node api server", nodeApiAddr)
 
+	switch nodeAuthType {
+	case "SecretAuth":
+		postHandler = new(handler.SecretAuthHandler)
+	case "IpWhiteList":
+		postHandler = new(handler.IpWhiteListHandler)
+	default:
+		postHandler = new(handler.PostHandler)
+	}
+
+	err := postHandler.Ready()
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+
 	app := iris.New()
 	//不限制上传文件的大小
-	app.Post("/api/file", _self.FileHandler)
-	app.Put("/api/file", _self.FileHandler)
+	app.Post("/api/file", postHandler.ReqHandler(_self.SaveFileHandler))
+	app.Put("/api/file", postHandler.ReqHandler(_self.SaveFileHandler))
 	//限制上传文件的大小，32<<20 表示 32M
 	//app.Post("/api/file", context.LimitRequestBodySize(32<<20), _self.FileHandler)
 	app.Any("/", _self.DefaultHandler)

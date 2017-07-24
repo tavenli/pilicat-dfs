@@ -4,6 +4,7 @@ import (
 	"dfs-node/server"
 	"pilicat-core/config"
 	"pilicat-core/logs"
+	"time"
 )
 
 var (
@@ -32,4 +33,6 @@ func main() {
 	nodePubServer.Run()
 	nodeApiServer.Run()
 
+	logs.Info("The service will stop.")
+	time.Sleep(1 * time.Second)
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"dfs-common"
 	"fmt"
 	"os"
 	"pilicat-core/config"
@@ -18,7 +19,7 @@ type NodePubServer struct {
 func (_self *NodePubServer) DefaultHandler(ctx context.Context) {
 	logs.Debug(utils.GetIP(ctx.Request()), " ", ctx.Method(), " ", ctx.Path())
 
-	OutputText(ctx, fmt.Sprint("Pilicat Dfs-Node Pub ", Version))
+	dfsCommon.OutputText(ctx, fmt.Sprint("Pilicat Dfs-Node Pub ", Version))
 }
 
 func (_self *NodePubServer) Run() {
