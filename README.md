@@ -63,6 +63,9 @@ curl -X POST -F file=@/app/test.jpg http://127.0.0.1:8800/api/file
 node.name = "dfs-node-1"    //节点名称，在同一个center中唯一
 node.public.addr = "0.0.0.0:8700"    //用于对外访问端口，主要供web访问上传后的文件，如果是80端口直接对外，可直接绑到80端口上
 node.api.addr = "0.0.0.0:8800"    //用于内网接口，文件上传、覆盖、删除等操作，都通过该端口，通常绑定在内网IP
+node.auth.type = "IpWhiteList"    //内网接口的鉴权方式，目前支持 SecretAuth 和 IpWhiteList两种方式，如果不需要鉴权，该项内容留空，或不配置即可
+node.auth.token = "26CCD056107481F45D1AC805A24A9E59"    //当鉴权类型为 SecretAuth 时，需要配置该项
+node.ip.white.list = "127.0.0.1,192.168.1.0/24"    //当鉴权类型为 IpWhiteList 时，需要配置该项
 
 dfs.center = "192.168.1.200:8000"    //集群高可用服务所在位置，用于自动注册dfs-node
 dfs.public.url = "http://dsf.hicode.top:8700"    //用于对外访问的域名
